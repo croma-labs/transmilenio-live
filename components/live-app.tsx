@@ -206,7 +206,7 @@ function RecordOverlay({ fleet, onExit }: { fleet: Fleet | null; onExit: () => v
   }, []);
   return (
     <>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-64 bg-gradient-to-t from-background via-background/70 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[55%] bg-gradient-to-t from-background via-background/75 to-transparent" />
       <div className="pointer-events-none absolute bottom-8 left-8 z-20 sm:bottom-12 sm:left-12">
         <div className="flex items-center gap-2">
           <LiveDot />
