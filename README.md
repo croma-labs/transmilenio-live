@@ -11,7 +11,7 @@
 
 A live map of Bogotá's public transport built on the [Croma API](https://docs.usecroma.com/guides/colombia/transmilenio): the whole TransMilenio fleet gliding across the city, the next buses at any station, and the path of any route, from four endpoints and one API key.
 
-**[Open the live map →](https://transmilenio-live.vercel.app)**
+**[Open the live map →](https://transmi.usecroma.com)**
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?project-name=transmilenio-live&repository-name=transmilenio-live&repository-url=https%3A%2F%2Fgithub.com%2Fcroma-labs%2Ftransmilenio-live&env=CROMA_API_KEY&envDescription=CROMA_API_KEY+reads+TransMilenio+through+Croma+%28free+to+get%29.&envLink=https%3A%2F%2Fplatform.usecroma.com%2Fsign-up)
 &nbsp;

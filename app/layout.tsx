@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 const title = "TransMilenio en vivo · Croma";
 const description = "Todos los buses de TransMilenio moviéndose en el mapa de Bogotá ahora mismo, con los próximos buses de cada estación y el recorrido de cada ruta, con la API de Croma.";
 
-const site = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000";
+const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://transmi.usecroma.com";
 const image = { url: "/og.jpg", width: 1200, height: 630, alt: "Todos los buses de TransMilenio en el mapa de Bogotá" };
 
 export const metadata: Metadata = {
