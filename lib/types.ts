@@ -1,6 +1,6 @@
 import type { z } from "zod";
 
-import type { arrivalsResult, System } from "@/lib/schemas";
+import type { arrivalsResult, DayType, System } from "@/lib/schemas";
 
 /** One bus as the map draws it: positions change every snapshot, the rest rarely. */
 export interface Bus {
@@ -25,6 +25,8 @@ export interface Fleet {
   asOf: string;
   /** False when TransMilenio has published nothing new for over 5 minutes: the buses are its last published positions. */
   live: boolean;
+  /** Set when the buses come from the published timetable instead of the live feed. */
+  scheduled?: { day: DayType; minute: number };
   total: number;
   buses: Bus[];
   routes: Record<string, RouteInfo>;

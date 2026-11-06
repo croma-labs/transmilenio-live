@@ -15,8 +15,8 @@ const STYLES = {
 };
 const FONT = ["Montserrat Medium", "Open Sans Regular", "Noto Sans Regular"];
 const BOGOTA: [number, number] = [-74.095, 4.645];
-/** Buses glide from their last reported position to the new one over this long. */
-const GLIDE_MS = 4_500;
+/** Buses glide from their last reported position to the new one over this long, unless `glideMs` says otherwise. */
+export const GLIDE_MS = 4_500;
 const FRAME_MS = 33;
 const TRAIL_POINTS = 6;
 
@@ -35,6 +35,8 @@ export interface BusMapProps {
   follow: boolean;
   cinematic: boolean;
   trails: boolean;
+  /** Shorter while scrubbing or playing the timetable; under the default the glide runs at a steady pace so steps join up. */
+  glideMs?: number;
   onSelectBus: (id: string | null) => void;
   onSelectStation: (station: Station) => void;
 }
@@ -99,7 +101,7 @@ export function BusMap(props: BusMapProps) {
       frame++;
       const p = live.current;
       if (p.cinematic && !m.isMoving()) m.setBearing(m.getBearing() + 0.03);
-      if (now - glideStart.current <= GLIDE_MS + FRAME_MS * 2) drawBuses(m, now, frame % 3 === 0);
+      if (now - glideStart.current <= (p.glideMs ?? GLIDE_MS) + FRAME_MS * 2) drawBuses(m, now, frame % 3 === 0);
       if (p.follow && p.selectedBus) {
         const at = drawn.current.get(p.selectedBus);
         if (at && !m.isMoving()) m.setCenter(at);
@@ -124,8 +126,9 @@ export function BusMap(props: BusMapProps) {
     for (const b of fleet.buses) {
       const point: Point = [b.lon, b.lat];
       next.set(b.id, point);
-      const trail = history.current.get(b.id) ?? [];
+      let trail = history.current.get(b.id) ?? [];
       const prev = trail[trail.length - 1];
+      if (prev && jumped(prev, point)) trail = [];
       if (!prev || Math.abs(prev[0] - point[0]) + Math.abs(prev[1] - point[1]) > 0.00003) {
         trail.push(point);
         if (trail.length > TRAIL_POINTS) trail.shift();
@@ -134,7 +137,10 @@ export function BusMap(props: BusMapProps) {
     }
     for (const id of history.current.keys()) if (!next.has(id)) history.current.delete(id);
     const start = new Map<string, Point>();
-    for (const [id, point] of next) start.set(id, drawn.current.get(id) ?? point);
+    for (const [id, point] of next) {
+      const at = drawn.current.get(id);
+      start.set(id, at && !jumped(at, point) ? at : point);
+    }
     from.current = start;
     to.current = next;
     glideStart.current = performance.now();
@@ -192,7 +198,9 @@ export function BusMap(props: BusMapProps) {
     const fleet = p.fleet;
     const source = m.getSource<GeoJSONSource>("buses");
     if (!fleet || !source) return;
-    const t = easeInOut(Math.min(1, (now - glideStart.current) / GLIDE_MS));
+    const glide = p.glideMs ?? GLIDE_MS;
+    const progress = Math.min(1, (now - glideStart.current) / glide);
+    const t = glide < GLIDE_MS ? progress : easeInOut(progress);
     const features: GeoJSON.Feature[] = [];
     const trails: GeoJSON.Feature[] = [];
     for (const b of fleet.buses) {
@@ -334,6 +342,11 @@ function addLayers(m: MapLibre, dark: boolean) {
     layout: { "text-field": ["get", "name"], "text-font": FONT, "text-size": 11, "text-offset": [0, 1.1], "text-anchor": "top", "text-max-width": 9 },
     paint: { "text-color": dark ? "#d4d4d4" : "#262626", "text-halo-color": dark ? "#0a0a0a" : "#ffffff", "text-halo-width": 1.4 },
   });
+}
+
+/** Further apart than a bus covers between two snapshots (about 2 km): a scrub, not a move, so it should not glide or draw a trail. */
+function jumped(a: Point, b: Point): boolean {
+  return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) > 0.02;
 }
 
 function easeInOut(t: number): number {

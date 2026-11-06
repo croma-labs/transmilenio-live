@@ -37,3 +37,20 @@ export function sinceText(iso: string): string {
   if (!m) return iso;
   return `las ${m[4]} del ${Number(m[3])} de ${MONTHS[Number(m[2]) - 1]}`;
 }
+
+/** The current minute of the day on Bogotá's clock. */
+export function bogotaMinute(at = new Date()): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/Bogota", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      .formatToParts(at)
+      .map((p) => [p.type, p.value]),
+  );
+  return Number(parts.hour) * 60 + Number(parts.minute);
+}
+
+/** `07:05` from a minute of the day. */
+export function minuteClock(minute: number): string {
+  return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
+}
+
+export const DAY_LABEL = { weekday: "Entre semana", saturday: "Sábado", sunday: "Domingo y festivo" } as const;

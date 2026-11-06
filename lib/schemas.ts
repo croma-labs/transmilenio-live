@@ -5,6 +5,15 @@ export type System = (typeof SYSTEMS)[number];
 
 const system = z.enum(SYSTEMS);
 
+export const DAY_TYPES = ["weekday", "saturday", "sunday"] as const;
+export type DayType = (typeof DAY_TYPES)[number];
+
+/** `/api/schedule` params: a day type (today's when left out) and a minute of the day. */
+export const scheduleParams = z.object({
+  day: z.enum(DAY_TYPES).optional(),
+  minute: z.coerce.number().int().min(0).max(1439),
+});
+
 export const apiError = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
 
 export const vehiclesPage = z.object({

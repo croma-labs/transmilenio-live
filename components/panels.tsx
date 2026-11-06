@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { clockOf, formatMs, statusText, sinceText } from "@/lib/format";
+import { clockOf, DAY_LABEL, formatMs, minuteClock, statusText, sinceText } from "@/lib/format";
 import type { System } from "@/lib/schemas";
 import { SYSTEM_STYLE, systemColor } from "@/lib/systems";
 import type { Trace } from "@/lib/trace";
@@ -34,8 +34,8 @@ export function LiveDot({ className, off = false }: { className?: string; off?: 
 }
 
 /** Over the map while TransMilenio is not publishing: says so, since when, and what the map shows instead. */
-export function StaleBanner({ fleet }: { fleet: Fleet | null }) {
-  if (!fleet || fleet.live) return null;
+export function StaleBanner({ fleet, onSchedule }: { fleet: Fleet | null; onSchedule: () => void }) {
+  if (!fleet || fleet.live || fleet.scheduled) return null;
   return (
     <div role="status" className="pointer-events-none absolute top-4 left-1/2 z-20 w-[min(560px,calc(100%-2rem))] -translate-x-1/2 border border-line bg-background/95 px-4 py-3 backdrop-blur lg:left-[calc(50%+180px)]">
       <div className="flex items-center gap-2">
@@ -48,6 +48,9 @@ export function StaleBanner({ fleet }: { fleet: Fleet | null }) {
       <p className="mt-1 text-xs leading-snug text-muted-foreground">
         El mapa muestra la última posición publicada, así que los buses pueden no estar donde se ven. Las llegadas a cada estación salen del horario programado hasta que vuelva la señal.
       </p>
+      <Button size="sm" variant="outline" className="pointer-events-auto mt-2.5" onClick={onSchedule}>
+        Ver el horario programado
+      </Button>
     </div>
   );
 }
@@ -74,6 +77,21 @@ export function AnimatedNumber({ value, className }: { value: number; className?
 }
 
 export function LiveCounter({ fleet, error }: { fleet: Fleet | null; error: string | null }) {
+  if (fleet?.scheduled) {
+    return (
+      <section className="border-b border-line px-5 pt-5 pb-5">
+        <div className="flex items-center gap-2">
+          <LiveDot off />
+          <span className="eyebrow">Horario programado · Bogotá</span>
+        </div>
+        <div className="mt-4 font-sans text-[64px] leading-none font-semibold tracking-[-0.04em]">
+          <AnimatedNumber value={fleet.total} />
+        </div>
+        <p className="mt-2 text-sm text-muted-foreground">buses en vía a las {minuteClock(fleet.scheduled.minute)} según el horario</p>
+        <p className="mt-3 font-mono text-[10.5px] text-muted-foreground tabular-nums">{DAY_LABEL[fleet.scheduled.day]} · horario publicado por TransMilenio</p>
+      </section>
+    );
+  }
   return (
     <section className="border-b border-line px-5 pt-5 pb-5">
       <div className="flex items-center gap-2">

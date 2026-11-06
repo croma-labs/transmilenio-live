@@ -9,11 +9,15 @@ import { AnimatedNumber, BusCard, Inspector, LiveCounter, LiveDot, RouteSearch, 
 import { SiteHeader } from "@/components/site-header";
 import { StationSheet } from "@/components/station-sheet";
 import { Button } from "@/components/ui/button";
+import { type Mode, TimeMachine } from "@/components/time-machine";
 import { getJson, usePoll, useTraces } from "@/components/use-live";
-import { clockOf } from "@/lib/format";
-import type { System } from "@/lib/schemas";
+import { bogotaMinute, clockOf, minuteClock } from "@/lib/format";
+import type { DayType, System } from "@/lib/schemas";
 import type { Fleet, RouteLine, Station } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+const PLAY_STEP = 2;
+const PLAY_TICK_MS = 1_000;
 
 const BusMap = dynamic(() => import("@/components/bus-map").then((m) => m.BusMap), { ssr: false });
 
@@ -24,7 +28,41 @@ export function LiveApp() {
   const dark = !mounted || resolvedTheme !== "light";
 
   const { traces, add } = useTraces();
-  const { result: fleetResult } = usePoll<Fleet>("/api/fleet", 15_000, add);
+  const [mode, setMode] = useState<Mode>("live");
+  const [day, setDay] = useState<DayType | null>(null);
+  const [minute, setMinute] = useState(() => bogotaMinute());
+  const [playing, setPlaying] = useState(false);
+  const [scheduleFleet, setScheduleFleet] = useState<Fleet | null>(null);
+  const { result: liveResult } = usePoll<Fleet>(mode === "live" ? "/api/fleet" : null, 15_000, add);
+
+  // The timetable at the chosen minute. A drag waits a beat so only where it stops is fetched.
+  useEffect(() => {
+    if (mode !== "schedule") return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      getJson<Fleet>(`/api/schedule?minute=${minute}${day ? `&day=${day}` : ""}`, add, controller.signal)
+        .then((r) => {
+          if (!r.ok) return;
+          setScheduleFleet(r.data);
+          if (!day && r.data.scheduled) setDay(r.data.scheduled.day);
+        })
+        .catch(() => {});
+    }, playing ? 0 : 120);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [mode, day, minute, playing, add]);
+
+  // Playing: two minutes of the day per second, stepping once the last step has landed.
+  const landed = scheduleFleet?.scheduled?.minute;
+  useEffect(() => {
+    if (mode !== "schedule" || !playing || landed !== minute) return;
+    const timer = setTimeout(() => setMinute((m) => (m + PLAY_STEP) % 1440), PLAY_TICK_MS);
+    return () => clearTimeout(timer);
+  }, [mode, playing, landed, minute]);
+
+  const fleetResult = mode === "live" ? liveResult : scheduleFleet ? ({ ok: true, data: scheduleFleet, traces: [] } as const) : null;
   const { result: stationsResult } = usePoll<Station[]>("/api/stations", 6 * 60 * 60_000, add);
   const fleet = fleetResult?.ok ? fleetResult.data : null;
   const stations = useMemo(() => (stationsResult?.ok ? stationsResult.data : []), [stationsResult]);
@@ -89,6 +127,14 @@ export function LiveApp() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
+      if (mode === "schedule" && e.key === " ") {
+        e.preventDefault();
+        setPlaying((p) => !p);
+      }
+      if (mode === "schedule" && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+        setPlaying(false);
+        setMinute((m) => (m + (e.key === "ArrowRight" ? 5 : -5) + 1440) % 1440);
+      }
       if (e.key === "r" || e.key === "R") setRecord((r) => !r);
       if (e.key === "Escape") {
         setRecord(false);
@@ -97,9 +143,19 @@ export function LiveApp() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectBus]);
+  }, [selectBus, mode]);
 
   const error = fleetResult && !fleetResult.ok ? fleetResult.error.message : null;
+
+  const changeMode = useCallback(
+    (next: Mode) => {
+      setMode(next);
+      setPlaying(false);
+      selectBus(null);
+      if (next === "schedule") setMinute(bogotaMinute());
+    },
+    [selectBus],
+  );
 
   const panel = (
     <>
@@ -125,6 +181,7 @@ export function LiveApp() {
         matched={matched}
         dark={dark}
       />
+      <TimeMachine mode={mode} onMode={changeMode} day={day} onDay={setDay} minute={minute} onMinute={setMinute} playing={playing} onPlaying={setPlaying} />
       <SystemLegend
         fleet={fleet}
         hidden={hidden}
@@ -168,12 +225,13 @@ export function LiveApp() {
           selectedStation={station?.id ?? null}
           follow={follow}
           cinematic={record}
-          trails={trails}
+          trails={trails && (mode === "live" || playing)}
+          glideMs={mode === "live" ? undefined : playing ? PLAY_TICK_MS + 150 : 500}
           onSelectBus={selectBus}
           onSelectStation={setStation}
         />
 
-        <StaleBanner fleet={fleet} />
+        <StaleBanner fleet={fleet} onSchedule={() => changeMode("schedule")} />
         {record ? (
           <RecordOverlay fleet={fleet} onExit={() => setRecord(false)} />
         ) : (
@@ -211,12 +269,14 @@ function RecordOverlay({ fleet, onExit }: { fleet: Fleet | null; onExit: () => v
       <div className="pointer-events-none absolute bottom-8 left-8 z-20 sm:bottom-12 sm:left-12">
         <div className="flex items-center gap-2">
           <LiveDot off={fleet != null && !fleet.live} />
-          <span className="eyebrow">{fleet && !fleet.live ? "Sin datos en vivo" : "En vivo"} · Bogotá{fleet ? ` · ${clockOf(fleet.asOf)}` : ""}</span>
+          <span className="eyebrow">
+            {fleet?.scheduled ? `Horario programado · Bogotá · ${minuteClock(fleet.scheduled.minute)}` : `${fleet && !fleet.live ? "Sin datos en vivo" : "En vivo"} · Bogotá${fleet ? ` · ${clockOf(fleet.asOf)}` : ""}`}
+          </span>
         </div>
         <div className="mt-3 text-[88px] leading-none font-semibold tracking-[-0.045em] sm:text-[128px]">
           {fleet ? <AnimatedNumber value={fleet.total} /> : "…"}
         </div>
-        <p className="mt-3 text-lg text-muted-foreground sm:text-xl">buses de TransMilenio moviéndose ahora mismo</p>
+        <p className="mt-3 text-lg text-muted-foreground sm:text-xl">{fleet?.scheduled ? "buses de TransMilenio en vía según el horario" : "buses de TransMilenio moviéndose ahora mismo"}</p>
       </div>
       <div className="pointer-events-none absolute right-8 bottom-8 z-20 text-right sm:right-12 sm:bottom-12">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -251,9 +311,9 @@ function MobileBar({ fleet, children }: { fleet: Fleet | null; children: React.R
       ) : null}
       <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between border-t border-line bg-background/90 px-5 py-3.5 backdrop-blur-md">
         <span className="flex items-center gap-3">
-          <LiveDot />
+          <LiveDot off={fleet != null && !fleet.live} />
           <span className="text-2xl font-semibold tracking-tight">{fleet ? <AnimatedNumber value={fleet.total} /> : "…"}</span>
-          <span className="text-sm text-muted-foreground">buses en vía</span>
+          <span className="text-sm text-muted-foreground">{fleet?.scheduled ? `según horario · ${minuteClock(fleet.scheduled.minute)}` : "buses en vía"}</span>
         </span>
         <span className="eyebrow-sm">{open ? "Cerrar" : "Detalles"}</span>
       </button>

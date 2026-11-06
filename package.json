@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "timetable": "node --no-warnings --max-old-space-size=6144 scripts/build-timetable.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

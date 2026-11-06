@@ -32,6 +32,7 @@ A live map of Bogotá's public transport built on the [Croma API](https://docs.u
 - **Any route**: type a code (`L18`, `B10`, `H710`) and its buses light up while the rest of the fleet dims. The route's path comes from `route` with `include_geometry`, and the map flies to it.
 - **Any station**: click one for the next buses from `stop-arrivals`, with minutes away and how late or early each one runs, refreshed every 20 seconds.
 - **Any bus**: click one for its route, the stop it is heading to, its plate and its last report. **Seguir bus** keeps the camera on it as it moves.
+- **Time slider**: switch to **Horario programado** and drag through the day, or press play to watch it run at two minutes a second. Every bus is placed where TransMilenio's published timetable says it should be at that minute, on weekdays, Saturdays or Sundays and holidays. It is labeled as the timetable, never as live, and it keeps working when the live feed stops.
 - **Recording mode**: press `R`. The panels go, the camera tilts and turns slowly over the city, and a large live counter takes the corner. Built for screen recordings and social posts.
 - **A live API inspector**: every call the server makes, its status and latency, and a ready-to-run cURL.
 - **One snapshot for everyone**: the server reads the fleet once every 15 seconds and every visitor shares it, so the API is called the same number of times whether one person watches or a thousand. The API key never reaches the browser.
@@ -76,6 +77,9 @@ app/api/fleet/route.ts       The shared fleet snapshot (every page of vehicles, 
 app/api/stations/route.ts    The stations on the map, kept for six hours
 app/api/arrivals/route.ts    The next buses at one station
 app/api/route/route.ts       One route's path and stops
+app/api/schedule/route.ts    Every bus at one minute of the published timetable
+lib/schedule.ts              Reads the compiled timetable and places each trip between its stops
+scripts/build-timetable.ts   Compiles TransMilenio's GTFS.zip into data/timetable
 lib/transit.ts               The calls to Croma, and the snapshots every visitor shares
 lib/croma.ts                 POST to Croma, validate with Zod, record a trace for the inspector
 lib/schemas.ts               Zod schemas for every response and query parameter
@@ -106,6 +110,12 @@ curl https://api.croma.run/co/transmilenio/vehicles/v1 \
   -H "Content-Type: application/json" \
   -d '{"route": "L18"}'
 ```
+
+### The timetable
+
+The time slider does not call the API. `npm run timetable` downloads TransMilenio's public GTFS feed (`GTFS.zip`, about 190 MB, nine million stop times) and compiles it into `data/timetable`: one gzipped binary per day type with each trip's route, its stops and the seconds between them, plus a `meta.json` with routes, stops and the holidays that run Sunday's timetable. That is about 15 MB, committed so a deploy needs no build step. Rebuild it when TransMilenio publishes a new timetable.
+
+`/api/schedule?minute=450&day=weekday` loads the day once per server instance, then for each trip running at that minute finds the two stops it is scheduled between and places the bus on the straight line between them. Trips that run past midnight count for the early hours. Answers are cached for an hour, since the timetable is the same every week. TransMiCable cabins, which the feed lists by frequency instead of by trip, are left out.
 
 ## Customization
 
