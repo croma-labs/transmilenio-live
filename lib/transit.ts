@@ -1,6 +1,7 @@
 import "server-only";
 
 import { asShared, croma, shared } from "@/lib/croma";
+import { isLiveData } from "@/lib/format";
 import { arrivalsResult, routeResult, stationsPage, vehiclesPage } from "@/lib/schemas";
 import type { Result, Trace } from "@/lib/trace";
 import type { Arrivals, Bus, Fleet, RouteInfo, RouteLine, Station } from "@/lib/types";
@@ -52,7 +53,7 @@ async function loadFleet(): Promise<Result<Fleet>> {
       });
     }
   }
-  return { ok: true, data: { asOf: first.data.as_of, total: buses.length, buses, routes }, traces };
+  return { ok: true, data: { asOf: first.data.as_of, live: isLiveData(first.data.as_of, first.data.live), total: buses.length, buses, routes }, traces };
 }
 
 export async function getStations(): Promise<Result<Station[]>> {

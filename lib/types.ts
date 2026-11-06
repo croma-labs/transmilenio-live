@@ -23,6 +23,8 @@ export interface RouteInfo {
 
 export interface Fleet {
   asOf: string;
+  /** False when TransMilenio has published nothing new for over 5 minutes: the buses are its last published positions. */
+  live: boolean;
   total: number;
   buses: Bus[];
   routes: Record<string, RouteInfo>;

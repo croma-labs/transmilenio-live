@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { AnimatedNumber, BusCard, Inspector, LiveCounter, LiveDot, RouteSearch, SystemLegend } from "@/components/panels";
+import { AnimatedNumber, BusCard, Inspector, LiveCounter, LiveDot, RouteSearch, StaleBanner, SystemLegend } from "@/components/panels";
 import { SiteHeader } from "@/components/site-header";
 import { StationSheet } from "@/components/station-sheet";
 import { Button } from "@/components/ui/button";
@@ -173,6 +173,7 @@ export function LiveApp() {
           onSelectStation={setStation}
         />
 
+        <StaleBanner fleet={fleet} />
         {record ? (
           <RecordOverlay fleet={fleet} onExit={() => setRecord(false)} />
         ) : (
@@ -209,8 +210,8 @@ function RecordOverlay({ fleet, onExit }: { fleet: Fleet | null; onExit: () => v
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[55%] bg-gradient-to-t from-background via-background/75 to-transparent" />
       <div className="pointer-events-none absolute bottom-8 left-8 z-20 sm:bottom-12 sm:left-12">
         <div className="flex items-center gap-2">
-          <LiveDot />
-          <span className="eyebrow">En vivo · Bogotá{fleet ? ` · ${clockOf(fleet.asOf)}` : ""}</span>
+          <LiveDot off={fleet != null && !fleet.live} />
+          <span className="eyebrow">{fleet && !fleet.live ? "Sin datos en vivo" : "En vivo"} · Bogotá{fleet ? ` · ${clockOf(fleet.asOf)}` : ""}</span>
         </div>
         <div className="mt-3 text-[88px] leading-none font-semibold tracking-[-0.045em] sm:text-[128px]">
           {fleet ? <AnimatedNumber value={fleet.total} /> : "…"}

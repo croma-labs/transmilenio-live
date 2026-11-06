@@ -9,6 +9,7 @@ export const apiError = z.object({ error: z.object({ code: z.string(), message: 
 
 export const vehiclesPage = z.object({
   as_of: z.string(),
+  live: z.boolean().optional(),
   total: z.number().int(),
   total_pages: z.number().int(),
   vehicles: z.array(
@@ -47,6 +48,7 @@ export const stationsPage = z.object({
 
 export const arrivalsResult = z.object({
   as_of: z.string(),
+  live: z.boolean().optional(),
   found: z.boolean(),
   stop_id: z.string(),
   stop_name: z.string().nullable(),
@@ -55,7 +57,7 @@ export const arrivalsResult = z.object({
     z.object({
       predicted_at: z.string().nullable(),
       minutes_away: z.number().int().nullable(),
-      basis: z.enum(["predicted", "estimated"]),
+      basis: z.enum(["predicted", "estimated", "scheduled"]),
       delay_seconds: z.number().int().nullable(),
       route_id: z.string().nullable(),
       route_code: z.string().nullable(),

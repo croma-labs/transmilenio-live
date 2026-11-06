@@ -20,3 +20,20 @@ export function delayText(seconds: number | null): string {
   if (minutes === 0) return "A tiempo";
   return minutes > 0 ? `${minutes} min tarde` : `${-minutes} min antes`;
 }
+
+/** How old the newest report may be before the feed counts as stopped, the same bar the API uses. */
+const STALE_AFTER_MS = 5 * 60_000;
+
+/** The API's `live` when it sends one; otherwise judged from `as_of`. */
+export function isLiveData(asOf: string, live: boolean | undefined): boolean {
+  return live ?? Date.now() - Date.parse(asOf) <= STALE_AFTER_MS;
+}
+
+const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/** "las 19:11 del 5 de noviembre", on Bogotá's clock, from an ISO timestamp in `-05:00`. */
+export function sinceText(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})/.exec(iso);
+  if (!m) return iso;
+  return `las ${m[4]} del ${Number(m[3])} de ${MONTHS[Number(m[2]) - 1]}`;
+}

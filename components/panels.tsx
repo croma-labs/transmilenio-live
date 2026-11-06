@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { clockOf, formatMs, statusText } from "@/lib/format";
+import { clockOf, formatMs, statusText, sinceText } from "@/lib/format";
 import type { System } from "@/lib/schemas";
 import { SYSTEM_STYLE, systemColor } from "@/lib/systems";
 import type { Trace } from "@/lib/trace";
@@ -24,12 +24,31 @@ export function Section({ title, aside, children, className }: { title: string; 
   );
 }
 
-export function LiveDot({ className }: { className?: string }) {
+export function LiveDot({ className, off = false }: { className?: string; off?: boolean }) {
   return (
     <span className={cn("relative flex size-2", className)}>
-      <span className="absolute inline-flex size-full animate-ping rounded-full bg-agent opacity-70" />
-      <span className="relative inline-flex size-2 rounded-full bg-agent" />
+      {off ? null : <span className="absolute inline-flex size-full animate-ping rounded-full bg-agent opacity-70" />}
+      <span className={cn("relative inline-flex size-2 rounded-full", off ? "bg-muted-foreground/50" : "bg-agent")} />
     </span>
+  );
+}
+
+/** Over the map while TransMilenio is not publishing: says so, since when, and what the map shows instead. */
+export function StaleBanner({ fleet }: { fleet: Fleet | null }) {
+  if (!fleet || fleet.live) return null;
+  return (
+    <div role="status" className="pointer-events-none absolute top-4 left-1/2 z-20 w-[min(560px,calc(100%-2rem))] -translate-x-1/2 border border-line bg-background/95 px-4 py-3 backdrop-blur lg:left-[calc(50%+180px)]">
+      <div className="flex items-center gap-2">
+        <LiveDot off />
+        <span className="eyebrow">Sin datos en vivo</span>
+      </div>
+      <p className="mt-1.5 text-sm leading-snug">
+        TransMilenio no está publicando la ubicación de los buses desde {sinceText(fleet.asOf)}.
+      </p>
+      <p className="mt-1 text-xs leading-snug text-muted-foreground">
+        El mapa muestra la última posición publicada, así que los buses pueden no estar donde se ven. Las llegadas a cada estación salen del horario programado hasta que vuelva la señal.
+      </p>
+    </div>
   );
 }
 
@@ -58,15 +77,25 @@ export function LiveCounter({ fleet, error }: { fleet: Fleet | null; error: stri
   return (
     <section className="border-b border-line px-5 pt-5 pb-5">
       <div className="flex items-center gap-2">
-        <LiveDot />
-        <span className="eyebrow">En vivo · Bogotá</span>
+        <LiveDot off={fleet != null && !fleet.live} />
+        <span className="eyebrow">{fleet && !fleet.live ? "Sin datos en vivo · Bogotá" : "En vivo · Bogotá"}</span>
       </div>
       <div className="mt-4 font-sans text-[64px] leading-none font-semibold tracking-[-0.04em]">
         {fleet ? <AnimatedNumber value={fleet.total} /> : <span className="text-muted-foreground/40">0</span>}
       </div>
-      <p className="mt-2 text-sm text-muted-foreground">buses de TransMilenio en vía ahora mismo</p>
+      <p className="mt-2 text-sm text-muted-foreground">{fleet && !fleet.live ? "buses en la última posición que publicó TransMilenio" : "buses de TransMilenio en vía ahora mismo"}</p>
       <p className="mt-3 font-mono text-[10.5px] text-muted-foreground tabular-nums">
-        {error ? <span className="text-destructive">{error}</span> : fleet ? `Posiciones de las ${clockOf(fleet.asOf)} · cada 15 s` : "Cargando la flota…"}
+        {error ? (
+          <span className="text-destructive">{error}</span>
+        ) : fleet ? (
+          fleet.live ? (
+            `Posiciones de las ${clockOf(fleet.asOf)} · cada 15 s`
+          ) : (
+            <span className="text-foreground">Última señal: {sinceText(fleet.asOf)}</span>
+          )
+        ) : (
+          "Cargando la flota…"
+        )}
       </p>
     </section>
   );
