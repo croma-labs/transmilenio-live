@@ -6,7 +6,7 @@ import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AnimatedNumber, BusCard, Inspector, LiveCounter, LiveDot, RouteSearch, StaleBanner, SystemLegend } from "@/components/panels";
-import { SiteHeader } from "@/components/site-header";
+import { ParaderoBanner, SiteHeader } from "@/components/site-header";
 import { StationSheet } from "@/components/station-sheet";
 import { Button } from "@/components/ui/button";
 import { type Mode, TimeMachine } from "@/components/time-machine";
@@ -212,7 +212,12 @@ export function LiveApp() {
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
-      {record ? null : <SiteHeader />}
+      {record ? null : (
+        <>
+          <ParaderoBanner />
+          <SiteHeader />
+        </>
+      )}
       <main className="relative min-h-0 flex-1">
         <BusMap
           fleet={fleet}
