@@ -2,8 +2,27 @@ import Image from "next/image";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 
-export const REPO_URL = "https://github.com/croma-labs/transmilenio-live";
+export const REPO_URL = "https://github.com/croma-labs/paradero";
 export const DOCS_URL = "https://docs.usecroma.com/guides/colombia/transmilenio";
+
+// A ruled line above the header: this data is becoming Paradero, an app and a
+// digital public good for Bogotá.
+export function ParaderoBanner() {
+  return (
+    <a
+      aria-label="Estamos construyendo Paradero, una app gratis y un bien público digital sobre estos datos. Ver el código."
+      className="group relative z-30 flex min-h-9 items-center justify-center gap-x-3 gap-y-1 border-b border-line bg-background px-5 py-2 text-center transition-colors hover:bg-secondary/40"
+      href={REPO_URL}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      <span className="eyebrow-sm whitespace-nowrap text-foreground sm:hidden">+ Construimos Paradero sobre estos datos →</span>
+      <span className="eyebrow-sm hidden whitespace-nowrap text-foreground sm:inline">+ Estamos construyendo Paradero</span>
+      <span className="eyebrow-sm hidden whitespace-nowrap lg:inline">una app gratis y un bien público digital sobre estos datos</span>
+      <span className="eyebrow-sm hidden whitespace-nowrap text-foreground transition-transform group-hover:translate-x-0.5 sm:inline">Ver el código →</span>
+    </a>
+  );
+}
 
 // Ruled header: full-height cells separated by hairlines, part of the page
 // grid rather than a floating bar.
