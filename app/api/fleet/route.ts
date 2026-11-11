@@ -4,5 +4,5 @@ import { getFleet } from "@/lib/transit";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return respond(await getFleet(), 10);
+  return respond(await getFleet(), 1);
 }
