@@ -5,22 +5,40 @@ import { ThemeToggle } from "@/components/theme-toggle";
 export const REPO_URL = "https://github.com/croma-labs/paradero";
 export const DOCS_URL = "https://docs.usecroma.com/guides/colombia/transmilenio";
 
-// A ruled line above the header: this data is becoming Paradero, an app and a
-// digital public good for Bogotá.
+export const APP_STORE_URL = "https://apps.apple.com/co/app/id6832336355";
+export const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=co.usecroma.paradero";
+
+const STORES = [
+  { href: APP_STORE_URL, src: "/stores/app-store-es.svg", alt: "Descargar Paradero en el App Store", width: 120, height: 40 },
+  { href: GOOGLE_PLAY_URL, src: "/stores/google-play-es.png", alt: "Descargar Paradero en Google Play", width: 135, height: 40 },
+];
+
 export function ParaderoBanner() {
   return (
-    <a
-      aria-label="Estamos construyendo Paradero, una app gratis y un bien público digital sobre estos datos. Ver el código."
-      className="group relative z-30 flex min-h-9 items-center justify-center gap-x-3 gap-y-1 border-b border-line bg-background px-5 py-2 text-center transition-colors hover:bg-secondary/40"
-      href={REPO_URL}
-      rel="noopener noreferrer"
-      target="_blank"
+    <aside
+      aria-label="Descarga Paradero"
+      className="relative z-30 flex flex-col items-center gap-x-6 gap-y-2.5 border-b border-line bg-foreground px-5 py-3 text-background sm:flex-row sm:justify-center"
     >
-      <span className="eyebrow-sm whitespace-nowrap text-foreground sm:hidden">+ Construimos Paradero sobre estos datos →</span>
-      <span className="eyebrow-sm hidden whitespace-nowrap text-foreground sm:inline">+ Estamos construyendo Paradero</span>
-      <span className="eyebrow-sm hidden whitespace-nowrap lg:inline">una app gratis y un bien público digital sobre estos datos</span>
-      <span className="eyebrow-sm hidden whitespace-nowrap text-foreground transition-transform group-hover:translate-x-0.5 sm:inline">Ver el código →</span>
-    </a>
+      <p className="text-center text-sm leading-tight font-medium sm:text-left sm:text-[15px]">
+        Paradero ya está en tu celular
+        <span className="block font-mono text-[10px] tracking-[0.18em] uppercase opacity-70">
+          <span className="hidden sm:inline">Los buses de Bogotá en vivo · </span>Gratis y sin anuncios
+        </span>
+      </p>
+      <div className="flex items-center gap-2.5">
+        {STORES.map((store) => (
+          <a
+            className="rounded-[7px] ring-1 ring-background/35 transition-opacity hover:opacity-80"
+            href={store.href}
+            key={store.href}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            <Image alt={store.alt} className="h-10 w-auto" height={store.height} priority src={store.src} unoptimized width={store.width} />
+          </a>
+        ))}
+      </div>
+    </aside>
   );
 }
 
