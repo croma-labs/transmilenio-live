@@ -6,29 +6,52 @@ import { arrivalsResult, routeResult, stationsPage, vehiclesPage } from "@/lib/s
 import type { Result, Trace } from "@/lib/trace";
 import type { Arrivals, Bus, Fleet, RouteInfo, RouteLine, Station } from "@/lib/types";
 
-// The live feed refreshes about every 20 seconds, so one snapshot serves
-// every visitor for 15: the API is called the same number of times whether
-// one person watches the map or a thousand.
-const fleetCache = shared<Result<Fleet>>(15_000);
+// Every couple of seconds one tiny call asks whether TransMilenio has published
+// a new batch; the whole fleet is read only when it has. One snapshot serves
+// every visitor of this instance, so the API is called the same number of
+// times whether one person watches the map or a thousand.
+const fleetCache = shared<Result<Fleet>>(2_000);
 const stationCache = shared<Result<Station[]>>(6 * 60 * 60_000);
-const arrivalsCache = shared<Result<Arrivals>>(15_000);
+const arrivalsCache = shared<Result<Arrivals>>(3_000);
 const routeCache = shared<Result<RouteLine>>(60 * 60_000);
 
 const VEHICLES = "/co/transmilenio/vehicles/v1";
 const PER_PAGE = 500;
+/** A snapshot is read whole again after this long even if the batch looks the same. */
+const SNAPSHOT_MAX_AGE_MS = 60_000;
+
+let snapshot: { at: number; fleet: Fleet } | null = null;
 
 export async function getFleet(): Promise<Result<Fleet>> {
-  const { value, fresh } = await fleetCache("fleet", loadFleet, (r) => r.ok);
+  const { value, fresh } = await fleetCache("fleet", checkFleet, (r) => r.ok);
   return { ...value, traces: asShared(value.traces, fresh) };
 }
 
-async function loadFleet(): Promise<Result<Fleet>> {
+async function checkFleet(): Promise<Result<Fleet>> {
+  const kept = snapshot;
+  if (kept && Date.now() - kept.at < SNAPSHOT_MAX_AGE_MS) {
+    const probe = await croma(VEHICLES, { per_page: 1, page: 1 }, vehiclesPage);
+    if (probe.ok && probe.data.as_of === kept.fleet.asOf) {
+      return { ok: true, data: { ...kept.fleet, live: isLiveData(probe.data.as_of, probe.data.live) }, traces: [probe.trace] };
+    }
+  }
+  // Pages read across a new batch disagree; read once more so the map shows one moment.
+  let loaded = await loadFleet(true);
+  if (!loaded.ok && loaded.error.code === "mixed_batches") loaded = await loadFleet(false);
+  if (loaded.ok) snapshot = { at: Date.now(), fleet: loaded.data };
+  return loaded;
+}
+
+async function loadFleet(oneBatch: boolean): Promise<Result<Fleet>> {
   const first = await croma(VEHICLES, { per_page: PER_PAGE, page: 1 }, vehiclesPage);
   if (!first.ok) return { ok: false, error: first.error, traces: first.trace ? [first.trace] : [] };
   const rest = await Promise.all(
     Array.from({ length: Math.max(0, first.data.total_pages - 1) }, (_, i) => croma(VEHICLES, { per_page: PER_PAGE, page: i + 2 }, vehiclesPage)),
   );
   const traces: Trace[] = [first.trace, ...rest.flatMap((r) => (r.trace ? [r.trace] : []))];
+  if (oneBatch && rest.some((page) => page.ok && page.data.as_of !== first.data.as_of)) {
+    return { ok: false, error: { code: "mixed_batches", message: "Los datos cambiaron mientras se leían." }, traces };
+  }
 
   const routes: Record<string, RouteInfo> = {};
   const buses: Bus[] = [];
